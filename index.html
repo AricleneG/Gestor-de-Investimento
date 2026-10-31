@@ -22,7 +22,8 @@
     <ul class="navbar-nav ms-auto me-3 d-none d-md-flex flex-row gap-1" id="desktopNav">
       <li class="nav-item"><button class="nav-link nav-btn active" data-view="dashboard"><i class="bi bi-speedometer2"></i> Painel</button></li>
       <li class="nav-item"><button class="nav-link nav-btn" data-view="lista"><i class="bi bi-list-ul"></i> Investimentos</button></li>
-      <li class="nav-item"><button class="nav-link nav-btn" data-view="mapa"><i class="bi bi-diagram-3"></i> Mapa</button></li>
+      <li class="nav-item"><button class="nav-link nav-btn" data-view="mapa"><i class="bi bi-pie-chart"></i> Distribuição</button></li>
+      <li class="nav-item"><button class="nav-link nav-btn" data-view="controlo"><i class="bi bi-bank"></i> Bancos e movimentos</button></li>
     </ul>
 
     <div class="d-flex align-items-center gap-2 ms-auto ms-md-0">
@@ -155,8 +156,8 @@
   <!-- ============ MAPA ============ -->
   <section id="view-mapa" class="view d-none">
     <div class="mb-3">
-      <h1 class="h4 mb-0">Mapa de investimentos</h1>
-      <p class="text-secondary small mb-0">Quanto foi gasto, onde e quando.</p>
+      <h1 class="h4 mb-0">Distribuição dos investimentos</h1>
+      <p class="text-secondary small mb-0">Veja como o seu dinheiro está distribuído por tipo de investimento.</p>
     </div>
     <div id="mapSectors" class="row g-3 mb-4"></div>
 
@@ -167,6 +168,49 @@
       </div>
     </div></div>
   </section>
+
+  <!-- ============ CONTROLO FINANCEIRO ============ -->
+  <section id="view-controlo" class="view d-none">
+    <div class="mb-3">
+      <h1 class="h4 mb-0">Bancos e movimentos</h1>
+      <p class="text-secondary small mb-0">Compare depósitos a prazo e acompanhe entradas, saídas e transferências.</p>
+    </div>
+
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6">Simular depósito a prazo</h2>
+      <p class="small text-secondary">Introduza as taxas que consultou nos bancos. A comparação usa os valores que inserir, não taxas em tempo real.</p>
+      <div class="row g-2 align-items-end mb-3">
+        <div class="col-6 col-md-4"><label class="form-label" for="compareAmount">Valor a depositar (Kz)</label><input class="form-control" id="compareAmount" type="number" min="1" step="0.01" value="1000000"></div>
+        <div class="col-6 col-md-3"><label class="form-label" for="compareMonths">Prazo (meses)</label><input class="form-control" id="compareMonths" type="number" min="1" max="120" value="12"></div>
+        <div class="col-12 col-md-5"><div class="small text-secondary">Estimativa de juros simples, antes de impostos e comissões.</div></div>
+      </div>
+      <div class="table-responsive"><table class="table table-sm align-middle">
+        <thead><tr><th>Banco</th><th>Taxa anual (%)</th><th>Actualizada em</th><th class="text-end">Juro estimado</th><th class="text-end">Total estimado</th></tr></thead>
+        <tbody id="bankCompareBody"></tbody>
+      </table></div>
+      <div class="small text-secondary" id="compareNote">Preencha as taxas para comparar os bancos.</div>
+    </div></div>
+
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6">Registar movimento</h2>
+      <p class="small text-secondary">Anote depósitos, levantamentos ou transferências entre contas e investimentos.</p>
+      <form id="movementForm" class="row g-2 align-items-end">
+        <div class="col-6 col-md-3"><label class="form-label" for="movementType">Tipo</label><select class="form-select" id="movementType"><option value="Entrada">Entrada / Depósito</option><option value="Saída">Saída / Levantamento</option><option value="Transferência">Transferência</option></select></div>
+        <div class="col-6 col-md-3"><label class="form-label" for="movementValue">Valor (Kz)</label><input class="form-control" id="movementValue" type="number" min="0.01" step="0.01" required></div>
+        <div class="col-6 col-md-3"><label class="form-label" for="movementFrom">Origem / Conta</label><input class="form-control" id="movementFrom" maxlength="70" placeholder="Ex.: BFA" required></div>
+        <div class="col-6 col-md-3"><label class="form-label" for="movementTo">Destino</label><input class="form-control" id="movementTo" maxlength="70" placeholder="Banco ou investimento"></div>
+        <div class="col-6 col-md-3"><label class="form-label" for="movementDate">Data</label><input class="form-control" id="movementDate" type="date" required></div>
+        <div class="col-6 col-md-6"><label class="form-label" for="movementNote">Descrição (opcional)</label><input class="form-control" id="movementNote" maxlength="140" placeholder="Ex.: reforço do depósito a prazo"></div>
+        <div class="col-12 col-md-3 d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-plus-lg me-1"></i>Guardar movimento</button></div>
+      </form>
+    </div></div>
+
+    <div class="card"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h6 mb-0">Histórico de movimentos</h2><span class="small text-secondary" id="movementSummary"></span></div>
+      <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>Data</th><th>Tipo</th><th>Origem</th><th>Destino / descrição</th><th class="text-end">Valor</th><th></th></tr></thead><tbody id="movementBody"></tbody></table></div>
+      <div class="empty-state d-none" id="movementEmpty">Ainda não existem movimentos registados.</div>
+    </div></div>
+  </section>
 </main>
 
 <!-- Navegação inferior (telemóvel) -->
@@ -174,7 +218,8 @@
   <button class="active" data-view="dashboard"><i class="bi bi-speedometer2"></i><span>Painel</span></button>
   <button class="fab" data-action="new" aria-label="Novo investimento"><i class="bi bi-plus-lg"></i></button>
   <button data-view="lista"><i class="bi bi-list-ul"></i><span>Lista</span></button>
-  <button data-view="mapa"><i class="bi bi-diagram-3"></i><span>Mapa</span></button>
+  <button data-view="mapa"><i class="bi bi-pie-chart"></i><span>Distribuição</span></button>
+  <button data-view="controlo"><i class="bi bi-bank"></i><span>Bancos</span></button>
 </nav>
 
 <!-- Modal: registar / editar -->

@@ -21,7 +21,7 @@
     },
     deposito: {
       label: 'Depósito a Prazo', icon: 'bi-bank', color: '#0f766e',
-      entities: ['BFA', 'BAI', 'BIC', 'Standard Bank', 'Banco Sol', 'Atlântico'],
+      entities: ['BFA', 'BAI', 'BIC', 'Standard Bank', 'Banco Sol', 'Atlântico', 'BPC'],
       detalhe: null, prazo: { label: 'Prazo do depósito (meses)', required: true }, taxa: true,
     },
     mobiliario: {
@@ -37,6 +37,10 @@
 
   /* ---------- Estado ---------- */
   let items = load();
+  let movements = loadMovements();
+  const BANKS = ['BAI', 'BFA', 'BPC', 'Banco Millennium Atlântico'];
+  const RATE_KEY = 'meusinvest.bankRates.v1';
+  let bankRates = loadRates();
   let currency = localStorage.getItem(KEY_CUR) || 'AOA';
   let sort = { by: 'data', dir: 'desc' };
   let currentView = 'dashboard';
@@ -54,6 +58,9 @@
     catch { return []; }
   }
   function save() { localStorage.setItem(KEY, JSON.stringify(items)); }
+  function loadMovements() { try { const d = JSON.parse(localStorage.getItem('meusinvest.movements.v1')); return Array.isArray(d) ? d : []; } catch { return []; } }
+  function saveMovements() { localStorage.setItem('meusinvest.movements.v1', JSON.stringify(movements)); }
+  function loadRates() { try { const d = JSON.parse(localStorage.getItem(RATE_KEY)); return d && typeof d === 'object' ? d : {}; } catch { return {}; } }
 
   const fmtMoney = (n) => {
     try { return new Intl.NumberFormat(CURRENCY_LOCALE[currency], { style: 'currency', currency, maximumFractionDigits: 2 }).format(n); }
@@ -108,6 +115,7 @@
     if (currentView === 'dashboard') renderDashboard();
     if (currentView === 'lista') renderList();
     if (currentView === 'mapa') renderMap();
+    if (currentView === 'controlo') renderControl();
   }
 
   function sectorBadge(key) {
@@ -285,6 +293,44 @@
     $('#matrix').innerHTML = head + body + foot;
   }
 
+  /* ---------- Bancos, comparação e movimentos ---------- */
+  function renderControl() {
+    $('#movementDate').value ||= today();
+    const amount = Math.max(0, Number($('#compareAmount').value) || 0);
+    const months = Math.max(1, Number($('#compareMonths').value) || 1);
+    const rows = BANKS.map((bank) => {
+      const rate = bankRates[bank] || {};
+      const valid = rate.value !== '' && rate.value != null && Number.isFinite(Number(rate.value)) && Number(rate.value) >= 0;
+      const interest = valid ? amount * (Number(rate.value) / 100) * (months / 12) : null;
+      return `<tr><td class="fw-semibold">${esc(bank)}</td>
+        <td style="min-width:125px"><input class="form-control form-control-sm bank-rate" data-bank="${esc(bank)}" type="number" min="0" max="1000" step="0.01" placeholder="Inserir taxa" value="${valid ? esc(rate.value) : ''}"></td>
+        <td style="min-width:145px"><input class="form-control form-control-sm bank-date" data-bank="${esc(bank)}" type="date" value="${esc(rate.date || '')}"></td>
+        <td class="text-end text-nowrap">${interest === null ? '—' : fmtMoney(interest)}</td>
+        <td class="text-end text-nowrap fw-semibold">${interest === null ? '—' : fmtMoney(amount + interest)}</td></tr>`;
+    }).join('');
+    $('#bankCompareBody').innerHTML = rows;
+    const ranked = BANKS.map((b) => ({ bank: b, rate: bankRates[b] })).filter(x => x.rate && x.rate.value !== '' && Number.isFinite(Number(x.rate.value))).sort((a,b) => Number(b.rate.value)-Number(a.rate.value));
+    $('#compareNote').textContent = ranked.length ? `Maior taxa registada: ${ranked[0].bank} (${Number(ranked[0].rate.value).toLocaleString('pt-PT')}% ao ano). Confirme as condições directamente com o banco.` : 'Preencha as taxas para comparar os bancos.';
+    const sorted = [...movements].sort((a,b) => b.date.localeCompare(a.date) || b.created-a.created);
+    $('#movementSummary').textContent = `${movements.length} movimento(s)`;
+    $('#movementEmpty').classList.toggle('d-none', sorted.length > 0);
+    $('#movementBody').innerHTML = sorted.map(m => `<tr><td class="text-nowrap">${fmtDate(m.date)}</td><td>${esc(m.type)}</td><td>${esc(m.from)}</td><td>${esc([m.to,m.note].filter(Boolean).join(' · ') || '—')}</td><td class="text-end text-nowrap fw-semibold">${fmtMoney(m.value)}</td><td class="text-end"><button class="btn btn-sm btn-outline-danger" data-movement-delete="${m.id}" aria-label="Eliminar movimento"><i class="bi bi-trash"></i></button></td></tr>`).join('');
+  }
+
+  function saveBankRates() {
+    $$('.bank-rate').forEach(input => {
+      const bank = input.dataset.bank;
+      bankRates[bank] = bankRates[bank] || {};
+      bankRates[bank].value = input.value;
+    });
+    $$('.bank-date').forEach(input => {
+      const bank = input.dataset.bank;
+      bankRates[bank] = bankRates[bank] || {};
+      bankRates[bank].date = input.value;
+    });
+    localStorage.setItem(RATE_KEY, JSON.stringify(bankRates));
+  }
+
   /* ---------- Formulário ---------- */
   const modal = () => bootstrap.Modal.getOrCreateInstance($('#modalInvest'));
 
@@ -415,7 +461,7 @@
           .map((i) => ({ ...i, id: i.id || uid(), criado: i.criado || Date.now(), valor: Number(i.valor) }));
         if (!valid.length) throw new Error('vazio');
         if (!confirm(`Restaurar ${valid.length} registo(s)? Os dados actuais serão substituídos.`)) return;
-        items = valid; save(); render(); toast('Cópia restaurada.');
+        items = valid; movements = Array.isArray(d.movements) ? d.movements : []; bankRates = d.bankRates && typeof d.bankRates === 'object' ? d.bankRates : {}; save(); saveMovements(); localStorage.setItem(RATE_KEY, JSON.stringify(bankRates)); render(); toast('Cópia restaurada.');
       } catch { toast('Ficheiro inválido.'); }
     };
     r.readAsText(file);
@@ -479,14 +525,28 @@
     ['fSearch', 'fSector', 'fFrom', 'fTo'].forEach((id) => $('#' + id).addEventListener('input', renderList));
     $('#fReset').addEventListener('click', () => { ['fSearch', 'fSector', 'fFrom', 'fTo'].forEach((id) => ($('#' + id).value = '')); renderList(); });
 
+    $('#compareAmount').addEventListener('input', () => { saveBankRates(); renderControl(); });
+    $('#compareMonths').addEventListener('input', () => { saveBankRates(); renderControl(); });
+    $('#bankCompareBody').addEventListener('change', (e) => { if (e.target.matches('.bank-rate, .bank-date')) { saveBankRates(); renderControl(); } });
+    $('#movementForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const type = $('#movementType').value, value = Number($('#movementValue').value), from = $('#movementFrom').value.trim(), to = $('#movementTo').value.trim(), date = $('#movementDate').value;
+      if (!(value > 0) || !from || !date || date > today()) return toast('Verifique o valor, a origem e a data do movimento.');
+      movements.push({ id: uid(), created: Date.now(), type, value, from, to, date, note: $('#movementNote').value.trim() });
+      saveMovements(); e.target.reset(); $('#movementDate').value = today(); renderControl(); toast('Movimento guardado.');
+    });
+    $('#movementBody').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-movement-delete]'); if (!btn) return;
+      if (confirm('Eliminar este movimento?')) { movements = movements.filter(m => m.id !== btn.dataset.movementDelete); saveMovements(); renderControl(); toast('Movimento eliminado.'); }
+    });
     $('#currencySelect').addEventListener('change', (e) => { currency = e.target.value; localStorage.setItem(KEY_CUR, currency); render(); });
     $('#btnExportCsv').addEventListener('click', exportCsv);
-    $('#btnBackup').addEventListener('click', () => download(`meusinvest-copia-${today()}.json`, JSON.stringify({ versao: 1, items }, null, 2), 'application/json'));
+    $('#btnBackup').addEventListener('click', () => download(`meusinvest-copia-${today()}.json`, JSON.stringify({ versao: 2, items, movements, bankRates }, null, 2), 'application/json'));
     $('#fileRestore').addEventListener('change', (e) => { if (e.target.files[0]) restore(e.target.files[0]); e.target.value = ''; });
     $('#btnDemo').addEventListener('click', loadDemo);
     $('#btnClear').addEventListener('click', () => {
       if (!items.length) return;
-      if (confirm('Apagar TODOS os investimentos? Esta acção não pode ser desfeita.')) { items = []; save(); render(); toast('Dados apagados.'); }
+      if (confirm('Apagar TODOS os investimentos? Esta acção não pode ser desfeita.')) { items = []; movements = []; bankRates = {}; save(); saveMovements(); localStorage.removeItem(RATE_KEY); render(); toast('Dados apagados.'); }
     });
   }
 

@@ -1,0 +1,22 @@
+MEUSINVEST — versão melhorada
+
+COMO ABRIR
+1. Extraia o ficheiro ZIP para uma pasta.
+2. Abra a pasta Gestor-de-Investimento-principal.
+3. Abra o ficheiro index.html num navegador (Chrome, Edge ou Firefox).
+4. Para os gráficos e o visual, é necessária ligação à Internet porque Bootstrap e Chart.js são carregados por CDN.
+
+FUNCIONALIDADES
+- Painel com resumo, gráficos e próximos vencimentos.
+- Registo, edição, pesquisa e eliminação de investimentos.
+- Distribuição dos investimentos por sector.
+- Comparação de depósitos a prazo para BAI, BFA, BPC e Banco Millennium Atlântico.
+- Simulação de juros simples com base nas taxas que o utilizador inserir.
+- Registo de entradas, saídas e transferências, com histórico.
+- Exportação CSV e cópia de segurança JSON.
+
+IMPORTANTE
+- As taxas dos bancos não são obtidas automaticamente. O utilizador deve inserir a taxa e a data em que a consultou junto do banco.
+- A simulação apresenta juros simples estimados, antes de impostos, comissões e outras condições contratuais. Não é uma proposta bancária nem garante rendimento.
+- Os movimentos são guardados como histórico independente. Nesta versão, registar um movimento não altera automaticamente o valor de um investimento; para actualizar a posição, edite também o investimento correspondente.
+- Os dados ficam guardados no armazenamento local do navegador e neste computador/perfil. Use regularmente “Guardar cópia (JSON)” para fazer backup. Não existe ainda sincronização entre dispositivos nem ligação às contas bancárias.
